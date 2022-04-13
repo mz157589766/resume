@@ -3,6 +3,8 @@ export type ResumeConfig = {
   /** 头像 */
   avatar?: {
     src?: string;
+    shape?: string;
+    size?: string;
     hidden?: boolean;
   };
 
@@ -15,6 +17,28 @@ export type ResumeConfig = {
     zhihu?: string;
     /** 工作经验 xx 年 */
     workExpYear?: string;
+    /** 工作地 */
+    workPlace?: string;
+    /** 职位 */
+    positionTitle?: string;
+  };
+
+  /** 标题名称映射 */
+  titleNameMap?: {
+    /** 默认: 教育背景 */
+    educationList?: string;
+    /** 默认: 工作经历 */
+    workExpList?: string;
+    /** 默认: 项目经历 */
+    projectList?: string;
+    /** 默认: 个人技能 */
+    skillList?: string;
+    /** 默认: 更多信息 */
+    awardList?: string;
+    /** 默认: 作品 */
+    workList?: string;
+    /** 自我介绍 */
+    aboutme?: string;
   };
 
   /** 教育背景 */
@@ -76,11 +100,11 @@ export type ResumeConfig = {
   aboutme?: {
     aboutme_desc: string;
   };
-  
+
   /** 增加国际化 */
   locales?: {
     [key: string]: ResumeConfig;
-  }
+  };
 };
 
 /**

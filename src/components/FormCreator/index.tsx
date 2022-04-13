@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, InputNumber, Button, Checkbox } from 'antd';
+import { Form, Input, InputNumber, Button, Checkbox, Select } from 'antd';
 import { FormItemProps } from 'antd/lib/form';
-import _ from 'lodash';
+import _ from 'lodash-es';
 import { ColorPicker } from './ColorPicker';
 import { getLocale } from '@/locale';
 
@@ -21,6 +21,8 @@ type Props = {
     [key: string]: any;
   };
   onChange: (v: any) => void;
+  /** 列表型内容 */
+  isList: boolean;
 };
 
 const FormItemComponentMap = (type: string) => (
@@ -29,6 +31,8 @@ const FormItemComponentMap = (type: string) => (
   switch (type) {
     case 'checkbox':
       return <Checkbox {...props} />;
+    case 'select':
+      return <Select {...props} />;
     case 'input':
       return <Input {...props} />;
     case 'number':
@@ -54,16 +58,20 @@ export const FormCreator: React.FC<Props> = props => {
     setFields(datas);
   }, [props.value]);
 
-  const onFinish = (values: any) => {
+  const handleChange = (values: any) => {
     props.onChange(values);
   };
+  const formProps = {
+    [props.isList ? 'onFinish' : 'onValuesChange']: handleChange,
+  };
+
   return (
     <div>
       <Form
         labelCol={{ span: 6 }}
         initialValues={props.value}
         fields={fields}
-        onFinish={onFinish}
+        {...formProps}
       >
         {_.map(props.config, c => {
           return (
@@ -81,11 +89,13 @@ export const FormCreator: React.FC<Props> = props => {
             </Form.Item>
           );
         })}
-        <Form.Item wrapperCol={{ offset: 6 }}>
-          <Button type="primary" htmlType="submit">
-            {i18n.get('提交')}
-          </Button>
-        </Form.Item>
+        {props.isList && (
+          <Form.Item wrapperCol={{ offset: 6 }}>
+            <Button type="primary" htmlType="submit">
+              {i18n.get('提交')}
+            </Button>
+          </Form.Item>
+        )}
       </Form>
     </div>
   );

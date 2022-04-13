@@ -10,14 +10,20 @@ import {
   ToolTwoTone,
   ScheduleTwoTone,
 } from '@ant-design/icons';
-import _ from 'lodash';
-import { getLocale } from '@/locale';
+import _ from 'lodash-es';
+import { ResumeConfig } from '@/components/types';
 
 /**
  * ① 内置的简历模块
  * ② 后续支持添加自定义模块
  */
-export const MODULES = ({ i18n }) => {
+export const MODULES = ({
+  i18n,
+  titleNameMap,
+}: {
+  i18n: any;
+  titleNameMap?: ResumeConfig['titleNameMap'];
+}) => {
   return [
     { name: i18n.get('头像设置'), icon: <ContactsTwoTone />, key: 'avatar' },
     { name: i18n.get('个人信息'), icon: <ProfileTwoTone />, key: 'profile' },
@@ -36,7 +42,10 @@ export const MODULES = ({ i18n }) => {
       icon: <ProjectTwoTone />,
       key: 'projectList',
     },
-  ];
+  ].map(d => {
+    const name = _.get(titleNameMap, d.key);
+    return { ...d, name: _.isNil(name) ? d.name : name };
+  });
 };
 
 /**
@@ -54,6 +63,15 @@ export const CONTENT_OF_MODULE = ({ i18n }) => {
         },
         cfg: {
           checked: false,
+        },
+      },
+      {
+        type: 'select',
+        attributeId: 'shape',
+        displayName: i18n.get('头像形状'),
+        cfg: {
+          defaultValue: 'circle',
+          options: [{ value: 'circle', label: i18n.get('圆形') }, { value: 'square', label: i18n.get('方形') }],
         },
       },
     ],
@@ -104,6 +122,16 @@ export const CONTENT_OF_MODULE = ({ i18n }) => {
         attributeId: 'workExpYear',
         displayName: i18n.get('工作经验'),
       },
+      {
+        type: 'input',
+        attributeId: 'workPlace',
+        displayName: i18n.get('工作地'),
+      },
+      {
+        type: 'input',
+        attributeId: 'positionTitle',
+        displayName: i18n.get('职位'),
+      },
     ],
     educationList: [
       {
@@ -133,7 +161,7 @@ export const CONTENT_OF_MODULE = ({ i18n }) => {
       },
       {
         type: 'input',
-        attributeId: 'role',
+        attributeId: 'project_role',
         displayName: i18n.get('担任角色'),
       },
       {

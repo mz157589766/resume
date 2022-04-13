@@ -1,15 +1,17 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { Button, Affix, Upload, message, Spin, Modal } from 'antd';
-import fetch from 'cross-fetch';
-import qs from 'query-string';
+import { Button, Affix, Upload, Spin, message, Alert, Modal } from 'antd';
 import { RcFile } from 'antd/lib/upload';
-import _ from 'lodash';
+import _ from 'lodash-es';
 import { getLanguage, getLocale } from '@/locale';
 import { useModeSwitcher } from '@/hooks/useModeSwitcher';
-import { RESUME_INFO } from '@/datas/resume';
+import { getDefaultTitleNameMap } from '@/datas/constant';
+import { getSearchObj } from '@/helpers/location';
 import { customAssign } from '@/helpers/customAssign';
 import { copyToClipboard } from '@/helpers/copy-to-board';
 import { getDevice } from '@/helpers/detect-device';
+import { exportDataToLocal } from '@/helpers/export-to-local';
+import { getConfig, saveToLocalStorage } from '@/helpers/store-to-local';
+import { fetchResume } from '@/helpers/fetch-resume';
 import { Drawer } from './Drawer';
 import { Resume } from './Resume';
 import { ResumeConfig, ThemeConfig } from './types';
@@ -18,10 +20,12 @@ import './index.less';
 export const Page: React.FC = () => {
   const lang = getLanguage();
   const i18n = getLocale();
+  const user = getSearchObj().user || 'visiky';
 
   const [, mode, changeMode] = useModeSwitcher({});
 
   const originalConfig = useRef<ResumeConfig>();
+  const query = getSearchObj();
   const [config, setConfig] = useState<ResumeConfig>();
   const [loading, updateLoading] = useState<boolean>(true);
   const [template, updateTemplate] = useState<string>('template1');
@@ -30,96 +34,62 @@ export const Page: React.FC = () => {
     tagColor: '#8bc34a',
   });
 
+  const changeConfig = (v: Partial<ResumeConfig>) => {
+    setConfig(
+      _.assign({}, { titleNameMap: getDefaultTitleNameMap({ i18n }) }, v)
+    );
+  };
+
   useEffect(() => {
-    const search = typeof window !== 'undefined' && window.location.search;
-    const query = qs.parse(search);
     if (query.template) {
       updateTemplate(query.template as string);
     }
   }, []);
 
   useEffect(() => {
-    const search = typeof window !== 'undefined' && window.location.search;
-    const query = qs.parse(search);
-    const user = query.user || '';
-    const branch = query.branch || 'master';
-    fetch(
-      `https://raw.githubusercontent.com/${user}/${user}/${branch}/resume.json`
-    )
-      .then(data => {
-        if (data.status !== 200) {
-          const link = `https://github.com/${user}/${user}/tree/${branch}`;
-          if (mode === 'edit') {
-            Modal.info({
-              title: i18n.get('获取简历信息失败'),
-              content: (
-                <div>
-                  请检查用户名 {user} 是否正确或者简历信息是否在
-                  <a href={link} target="_blank">{`${link}/resume.json`}</a>下
-                </div>
-              ),
-              okText: i18n.get('确定'),
-              onOk: () => {
-                originalConfig.current = RESUME_INFO;
-                setConfig(
-                  _.omit(
-                    customAssign(
-                      {},
-                      RESUME_INFO,
-                      _.get(RESUME_INFO, ['locales', lang])
-                    ),
-                    ['locales']
-                  )
-                );
-                updateLoading(false);
-              },
-            });
-          } else {
-            Modal.info({
-              title: i18n.get('获取简历信息失败'),
-              content: (
-                <div>
-                  请检查用户名 {user} 是否正确或者简历信息是否在
-                  <a href={link} target="_blank">{`${link}/resume.json`}</a>下
-                </div>
-              ),
-              okText: i18n.get('进入在线编辑'),
-              onOk: () => {
-                originalConfig.current = RESUME_INFO;
-                setConfig(
-                  _.omit(
-                    customAssign(
-                      {},
-                      RESUME_INFO,
-                      _.get(RESUME_INFO, ['locales', lang])
-                    ),
-                    ['locales']
-                  )
-                );
-                updateLoading(false);
-                changeMode('edit');
-              },
-            });
-          }
-         
-          return;
-        }
-        return data.json();
-      })
-      .then(data => {
-        originalConfig.current = data;
-        setConfig(
-          _.omit(customAssign({}, data, _.get(data, ['locales', lang])), [
-            'locales',
-          ])
-        );
-        updateLoading(false);
-      });
-  }, [lang]);
+    const user = (query.user || '') as string;
+    const branch = (query.branch || 'master') as string;
+    const mode = query.mode;
+
+    function store(data) {
+      originalConfig.current = data;
+      changeConfig(
+        _.omit(customAssign({}, data, _.get(data, ['locales', lang])), [
+          'locales',
+        ])
+      );
+      updateLoading(false);
+    }
+
+    if (!mode) {
+      const link = `https://github.com/${user}/${user}/tree/${branch}`;
+      fetchResume(lang, branch, user)
+        .then(data => store(data))
+        .catch(() => {
+          Modal.info({
+            title: i18n.get('获取简历信息失败'),
+            content: (
+              <div>
+                请检查用户名 {user} 是否正确或者简历信息是否在
+                <a href={link} target="_blank">{`${link}/resume.json`}</a>下
+              </div>
+            ),
+            okText: i18n.get('进入在线编辑'),
+            onOk: () => {
+              changeMode('edit');
+            },
+          });
+        });
+    } else {
+      getConfig(lang, branch, user).then(data => store(data));
+    }
+  }, [lang, query.user, query.branch]);
 
   const onConfigChange = useCallback(
     (v: Partial<ResumeConfig>) => {
-      setConfig(_.assign({}, config, v));
+      const newC = _.assign({}, config, v);
+      changeConfig(newC);
+      saveToLocalStorage(query.user as string, newC);
     },
     [config, lang]
   );
@@ -188,19 +158,61 @@ export const Page: React.FC = () => {
     return false;
   };
 
-  const copyConfig = () => {
+  function getConfigJson() {
     let fullConfig = config;
     if (lang !== 'zh_CN') {
       fullConfig = customAssign({}, originalConfig?.current, {
         locales: { [lang]: config },
       });
     }
-    copyToClipboard(JSON.stringify({ ...fullConfig, theme }));
+    return JSON.stringify({ ...fullConfig, theme });
+  }
+
+  const copyConfig = () => {
+    copyToClipboard(getConfigJson());
+  };
+
+  const exportConfig = () => {
+    exportDataToLocal(getConfigJson(), `${user}'s resume info`);
   };
 
   return (
     <React.Fragment>
       <Spin spinning={loading}>
+        {mode === 'edit' && (
+          <Alert
+            showIcon={false}
+            message={
+              <span>
+                {i18n.get(`编辑之后，请及时存储个人信息到个人仓库中。`)}
+                <span>
+                  <span style={{ marginRight: '4px' }}>
+                    👉 {!query.user && i18n.get('参考：')}
+                  </span>
+                  <span
+                    style={{
+                      color: `var(--primary-color, #1890ff)`,
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                      const user = query.user || 'visiky';
+                      window.open(`https://github.com/${user}/${user}`);
+                    }}
+                  >
+                    {`${query.user || 'visiky'}'s resumeInfo`}
+                  </span>
+                  <span>
+                    {`（https://github.com/${query.user || 'visiky'}/${
+                      query.user || 'visiky'
+                    }/blob/${query.branch || 'master'}/resume.json）`}
+                  </span>
+                </span>
+              </span>
+            }
+            banner
+            closable
+          />
+        )}
         <div className="page">
           {config && (
             <Resume value={config} theme={theme} template={template} />
@@ -216,24 +228,27 @@ export const Page: React.FC = () => {
                     onThemeChange={onThemeChange}
                     template={template}
                     onTemplateChange={updateTemplate}
+                    key={'1'}
                   />
-                  <React.Fragment>
-                    <Upload
-                      accept=".json"
-                      showUploadList={false}
-                      beforeUpload={importConfig}
-                    >
-                      <Button className="btn-upload">
-                        {i18n.get('导入配置')}
-                      </Button>
-                    </Upload>
-                    <Button type="primary" onClick={copyConfig}>
-                      {i18n.get('复制配置')}
+                  <Button type="primary" onClick={copyConfig} key="3">
+                    {i18n.get('复制配置')}
+                  </Button>
+                  <Button type="primary" onClick={exportConfig} key="3">
+                    {i18n.get('保存简历')}
+                  </Button>
+                  <Upload
+                    accept=".json"
+                    showUploadList={false}
+                    beforeUpload={importConfig}
+                    key={'2'}
+                  >
+                    <Button className="btn-upload">
+                      {i18n.get('导入配置')}
                     </Button>
-                    <Button type="primary" onClick={() => window.print()}>
-                      {i18n.get('PDF 下载')}
-                    </Button>
-                  </React.Fragment>
+                  </Upload>
+                  <Button type="primary" onClick={() => window.print()} key="4">
+                    {i18n.get('PDF 下载')}
+                  </Button>
                 </Button.Group>
               </Affix>
               <div

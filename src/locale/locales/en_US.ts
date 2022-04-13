@@ -6,8 +6,11 @@ export const EN_US_LOCALE: Locale = {
   预览: 'Preview',
   编辑: 'Edit',
 
+  已缓存在本地: 'Save to localStorage',
+
   导入配置: 'Import config',
   复制配置: 'Copy config',
+  保存简历: 'Save ResumneInfo',
   'PDF 下载': 'Download pdf',
   进行配置: 'Enter config',
   选择模板: 'Choose template',
@@ -24,8 +27,8 @@ export const EN_US_LOCALE: Locale = {
   个人作品: 'Personal works',
   专业技能: 'Professional skills',
   更多信息: 'More informations',
-  工作经历: 'Work Experience',
-  项目经历: 'Project Experience',
+  工作经历: 'Work experience',
+  项目经历: 'Project experience',
   项目描述: 'Description',
   主要工作: 'Main work',
   至今: 'to present',
@@ -33,12 +36,15 @@ export const EN_US_LOCALE: Locale = {
 
   头像设置: 'Avatar',
   个人信息: 'Personal infomation',
+  个人技能: 'Personal skills',
 
   隐藏头像: 'Hide avatar',
   姓名: 'Fullname',
   手机号码: 'Mobile',
   邮箱: 'Email',
   知乎: 'Zhihu',
+  职位: 'Position title',
+  工作地: 'work space',
   起始时间: 'Start time',
   学校: 'School',
   专业: 'Major in',
@@ -68,5 +74,7 @@ export const EN_US_LOCALE: Locale = {
   '编辑模式下, 切换国际化会导致配置内容丢失，请及时保存': '',
   '进入在线编辑': '',
   '获取简历信息失败': '',
-  '确定': 'Ok'
+  '确定': 'Ok',
+
+  '无用户信息模式下，不允许预览': ''
 }
